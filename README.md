@@ -65,6 +65,168 @@ For a built-in AI provider, run `/login` inside Pi to connect a subscription or 
 
 See the [documentation](https://pi.dev/docs/latest) for full setup and usage instructions, or [visit pi.dev](https://pi.dev) for demos.
 
+## 🚀 This Fork: Headless Mode + Deep Research
+
+This fork adds **headless execution mode** and a **Deep Research extension** for multi-agent research workflows.
+
+### ✨ What's New
+
+| Feature | Description |
+|---------|-------------|
+| **Headless CLI** | Run Pi non-interactively with `--headless` flag for automation & sub-agents |
+| **Deep Research** | 5-phase orchestration: Planner → Parallel Researchers → Synthesizer → Critic → Fact-checker |
+| **Agent Loader** | Load custom agents from `~/.pi/agent/agents/` |
+| **ModelResolver** | Model inheritance via env vars (`PI_MODEL`, `PI_PROVIDER`) — sub-agents inherit parent's model |
+| **Native Tools** | Provider-native web search & code interpreter (OpenAI, Anthropic, Google, xAI) |
+| **Updated Model Catalogs** | 37+ provider model definitions refreshed |
+
+---
+
+### Architecture Overview
+
+```
+USER QUERY
+    │
+    ▼
+/deep-research "research question" --depth comprehensive
+    │
+    ▼
+DEEP RESEARCH EXTENSION (orchestrator)
+    │
+    ├─► Sets PI_MODEL, PI_PROVIDER, API keys as env vars
+    │
+    ├─► Phase 1: PLANNER (headless agent)
+    │      Breaks question into 3-5 sub-questions
+    │
+    ├─► Phase 2: PARALLEL RESEARCHERS (3-5 headless agents)
+    │      Each researches one sub-question using native web search
+    │
+    ├─► Phase 3: SYNTHESIZER (headless agent)
+    │      Combines findings into coherent report
+    │
+    ├─► Phase 4: CRITIC (headless agent)
+    │      Checks for logical gaps, missing evidence
+    │
+    └─► Phase 5: FACT-CHECKER (headless agent)
+           Verifies key claims
+    │
+    ▼
+STRUCTURED JSON REPORT + CITATIONS
+```
+
+**Key principle:** Model is chosen **once** by the user. Sub-agents **cannot override** it — they inherit via env vars only. `HeadlessCLI` explicitly rejects `--model`/`--provider` flags.
+
+---
+
+### Quick Start: Deep Research
+
+```bash
+# Install this fork
+pnpm add github:monpanache11/pi#main
+
+# Run Pi interactively
+cd /your/project
+pi
+
+# Inside Pi, run deep research:
+> /deep-research "Compare Rust vs Go for microservices in 2024" --depth comprehensive
+```
+
+**Depth options:**
+- `--depth quick` — 2 researchers, ~2 min
+- `--depth standard` — 3 researchers, ~5 min (default)
+- `--depth comprehensive` — 5 researchers, ~10 min
+
+Output: Markdown report with citations, confidence scores, and gap analysis.
+
+---
+
+### Headless Mode (for automation / sub-agents)
+
+```bash
+# Direct headless execution (used by Deep Research internally)
+PI_MODEL="gpt-4o" PI_PROVIDER="openai" OPENAI_API_KEY="sk-..." \
+pi --headless \
+   --agent researcher_headless \
+   --task-file /tmp/task.json \
+   --output /tmp/result.json \
+   --max-turns 15
+```
+
+**Task file** (`/tmp/task.json`):
+```json
+{
+  "sub_question_id": "sq1",
+  "question": "Rust vs Go for microservices in 2024",
+  "description": "Focus on performance, ecosystem, hiring, operational maturity",
+  "budget": 5
+}
+```
+
+**Output** (`/tmp/result.json`):
+```json
+{
+  "sub_question_id": "sq1",
+  "findings": "## Key Findings\n...",
+  "citations": [{"id": 1, "title": "...", "url": "...", "source_type": "primary", "domain": "..."}],
+  "gaps": [],
+  "confidence": "HIGH",
+  "confidence_reasoning": "...",
+  "searches_used": 4,
+  "turns_used": 12
+}
+```
+
+---
+
+### Native Tools by Provider
+
+| Provider | Tools | API |
+|----------|-------|-----|
+| **OpenAI** | `web_search_preview`, `code_interpreter` | Responses API |
+| **Anthropic** | `web_search` | Messages API |
+| **Google** | `google_search` | Generative AI |
+| **xAI** | `web_search` | OpenAI-compatible |
+
+No need for external `web_search`/`web_fetch` tools — the model's **native** search is used directly.
+
+---
+
+### Custom Agents
+
+Place agent definitions in `~/.pi/agent/agents/`:
+
+```
+~/.pi/agent/agents/
+├── researcher_headless.md    # Included in this fork
+└── my_custom_agent.md        # Your agents
+```
+
+Agent frontmatter:
+```markdown
+---
+name: my_agent
+description: What this agent does
+tools: think_tool, write_output
+---
+Your prompt here...
+```
+
+Load with `--agent my_agent` in headless mode.
+
+---
+
+### Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `PI_MODEL` | Model ID (e.g., `gpt-4o`, `claude-3-5-sonnet-20241022`) |
+| `PI_PROVIDER` | Provider name (`openai`, `anthropic`, `google`, `xai`, etc.) |
+| `PI_OFFLINE` | `1` to skip network calls (testing) |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / etc. | Provider API keys |
+
+---
+
 ## Run with Nix
 
 ```bash
