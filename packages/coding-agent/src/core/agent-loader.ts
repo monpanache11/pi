@@ -15,31 +15,29 @@ export interface AgentDefinition {
 	filePath: string;
 }
 
-export class AgentLoader {
-	static async load(agentDir: string, agentName: string): Promise<AgentDefinition> {
-		// Check in ~/.pi/agent/agents/ first, then in agentDir/agents/
-		const possiblePaths = [
-			join(agentDir, "agents", `${agentName}.md`),
-			join(agentDir, "agents", `${agentName}.markdown`),
-		];
+export async function loadAgent(agentDir: string, agentName: string): Promise<AgentDefinition> {
+	// Check in ~/.pi/agent/agents/ first, then in agentDir/agents/
+	const possiblePaths = [
+		join(agentDir, "agents", `${agentName}.md`),
+		join(agentDir, "agents", `${agentName}.markdown`),
+	];
 
-		for (const path of possiblePaths) {
-			try {
-				const content = await readFile(path, "utf8");
-				const { frontmatter, body } = parseFrontmatter(content);
-				return {
-					name: agentName,
-					description: frontmatter.description as string | undefined,
-					tools: frontmatter.tools as string[] | undefined,
-					frontmatter,
-					content: body,
-					filePath: path,
-				};
-			} catch {
-				// Try next path
-			}
+	for (const path of possiblePaths) {
+		try {
+			const content = await readFile(path, "utf8");
+			const { frontmatter, body } = parseFrontmatter(content);
+			return {
+				name: agentName,
+				description: frontmatter.description as string | undefined,
+				tools: frontmatter.tools as string[] | undefined,
+				frontmatter,
+				content: body,
+				filePath: path,
+			};
+		} catch {
+			// Try next path
 		}
-
-		throw new Error(`Agent not found: ${agentName}. Searched in ${possiblePaths.join(", ")}`);
 	}
+
+	throw new Error(`Agent not found: ${agentName}. Searched in ${possiblePaths.join(", ")}`);
 }

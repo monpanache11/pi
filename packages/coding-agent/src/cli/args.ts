@@ -261,7 +261,7 @@ export function parseArgs(args: string[]): Args {
 			result.output = args[++i];
 		} else if (arg === "--max-turns" && i + 1 < args.length) {
 			const maxTurns = parseInt(args[++i], 10);
-			if (isNaN(maxTurns) || maxTurns < 1) {
+			if (Number.isNaN(maxTurns) || maxTurns < 1) {
 				result.diagnostics.push({ type: "error", message: "--max-turns requires a positive integer" });
 			} else {
 				result.maxTurns = maxTurns;

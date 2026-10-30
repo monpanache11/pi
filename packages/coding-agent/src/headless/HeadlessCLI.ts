@@ -9,15 +9,15 @@
  * - Exits with appropriate code
  */
 
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import chalk from "chalk";
 import type { Args } from "../cli/args.ts";
 import { getAgentDir } from "../config.ts";
-import { AgentLoader } from "../core/agent-loader.ts";
+import { loadAgent } from "../core/agent-loader.ts";
 import { createAgentSessionFromServices, createAgentSessionServices } from "../core/agent-session-services.ts";
 import type { ToolDefinition } from "../core/extensions/types.ts";
-import { ModelResolver } from "../core/model-resolver.ts";
+import { resolveModelConfig } from "../core/model-resolver.ts";
 import { ModelRuntime } from "../core/model-runtime.ts";
 import { SessionManager } from "../core/session-manager.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
@@ -60,7 +60,7 @@ async function loadTask(taskFile: string): Promise<TaskInput> {
 /**
  * Build initial messages for the agent from task
  */
-function buildInitialMessages(agentDef: Awaited<ReturnType<typeof AgentLoader.load>>, task: TaskInput): string {
+function buildInitialMessages(agentDef: Awaited<ReturnType<typeof loadAgent>>, task: TaskInput): string {
 	const systemPrompt = (agentDef.frontmatter?.systemPrompt as string) ?? "";
 	return `${systemPrompt}\n\n## Task\n\n**Sub-question ID:** ${task.sub_question_id}\n**Question:** ${task.question}\n**Description:** ${task.description}\n**Search Budget:** ${task.budget} searches maximum\n\nBegin research now.`;
 }
@@ -96,7 +96,7 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 	}
 
 	// Resolve model from env vars (set by orchestrator)
-	const modelConfig = ModelResolver.resolve({});
+	const modelConfig = resolveModelConfig({});
 	const provider = modelConfig.provider;
 
 	console.error(
@@ -119,7 +119,7 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 
 		// Load agent definition
 		const agentDir = getAgentDir();
-		const agentDef = await AgentLoader.load(agentDir, agent);
+		const agentDef = await loadAgent(agentDir, agent);
 
 		// Build initial prompt
 		const initialPrompt = buildInitialMessages(agentDef, task);
@@ -188,8 +188,6 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 			},
 			modelRuntime,
 		});
-
-		const resourceLoader = services.resourceLoader;
 
 		// Build native tool definitions
 		const nativeToolDefs: ToolDefinition[] = nativeTools.map((tool) => ({

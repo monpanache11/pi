@@ -137,7 +137,6 @@ class OpenAIWebSearchExecutor implements NativeToolExecutor {
 		args: { query: string; search_context_size?: "low" | "medium" | "high" },
 		context: NativeToolContext,
 	): Promise<NativeToolResult> {
-		// @ts-expect-error - dynamic import, types not available at compile time
 		const { OpenAI } = await import("openai");
 
 		const client = new OpenAI({
@@ -203,7 +202,6 @@ class OpenAIWebSearchExecutor implements NativeToolExecutor {
 
 class OpenAICodeInterpreterExecutor implements NativeToolExecutor {
 	async execute(args: { code: string }, context: NativeToolContext): Promise<NativeToolResult> {
-		// @ts-expect-error - dynamic import
 		const { OpenAI } = await import("openai");
 
 		const client = new OpenAI({
@@ -261,7 +259,6 @@ export const anthropicWebSearchSchema: ToolSchema = {
 
 class AnthropicWebSearchExecutor implements NativeToolExecutor {
 	async execute(args: { query: string }, context: NativeToolContext): Promise<NativeToolResult> {
-		// @ts-expect-error - dynamic import
 		const { Anthropic } = await import("@anthropic-ai/sdk");
 
 		const client = new Anthropic({
@@ -348,7 +345,6 @@ export const googleSearchSchema: ToolSchema = {
 
 class GoogleSearchExecutor implements NativeToolExecutor {
 	async execute(args: { query: string }, context: NativeToolContext): Promise<NativeToolResult> {
-		// @ts-expect-error - dynamic import
 		const { GoogleGenerativeAI } = await import("@google/generative-ai");
 
 		const genAI = new GoogleGenerativeAI(context.apiKey);
@@ -434,7 +430,7 @@ export const xaiWebSearchSchema: ToolSchema = {
 class XAIWebSearchExecutor implements NativeToolExecutor {
 	async execute(args: { query: string }, context: NativeToolContext): Promise<NativeToolResult> {
 		// xAI uses OpenAI-compatible API
-		// @ts-expect-error - dynamic import
+
 		const { OpenAI } = await import("openai");
 
 		const client = new OpenAI({
@@ -464,7 +460,7 @@ class XAIWebSearchExecutor implements NativeToolExecutor {
 			);
 
 			const toolCall = response.choices[0]?.message?.tool_calls?.[0];
-			const resultText = toolCall?.function?.arguments || "";
+			const resultText = toolCall && "function" in toolCall ? toolCall.function.arguments : "";
 			return {
 				success: true,
 				content: resultText,

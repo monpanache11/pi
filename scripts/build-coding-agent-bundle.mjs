@@ -25,6 +25,10 @@ const allowedExternalPackages = new Set([
 	"kerberos",
 	// Optional debug output coloring.
 	"supports-color",
+	// Optional AI provider SDKs (dynamically imported in NativeTools)
+	"openai",
+	"@anthropic-ai/sdk",
+	"@google/generative-ai",
 ]);
 
 const lazyJitiPlugin = {
@@ -81,7 +85,13 @@ function commonBuildOptions() {
 		banner,
 		bundle: true,
 		define: { PI_BUNDLED_NODE: "true" },
-		external: ["@silvia-odwyer/photon-node"],
+		external: [
+			"@silvia-odwyer/photon-node",
+			// Optional AI provider SDKs (dynamically imported in NativeTools)
+			"openai",
+			"@anthropic-ai/sdk",
+			"@google/generative-ai",
+		],
 		format: "esm",
 		legalComments: "none",
 		logLevel: "warning",

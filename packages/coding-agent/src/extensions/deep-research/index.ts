@@ -75,10 +75,6 @@ interface DeepResearchReport {
 	sub_question_results: ResearchResult[];
 }
 
-function getAgentDir(): string {
-	return join(homedir(), ".pi", "agent");
-}
-
 async function getPiEntryPoint(): Promise<string> {
 	// Try to find the pi CLI entry point
 	const possiblePaths = [
@@ -334,7 +330,7 @@ export function createDeepResearchExtension(): ExtensionFactory {
 				"Start a deep research investigation using parallel headless agents. Usage: /deep-research <question> [--depth standard|deep|comprehensive]",
 			handler: async (args: string, ctx: import("../../core/extensions/types.ts").ExtensionCommandContext) => {
 				const parts = args.trim().split(/\s+/);
-				const depthFlag = parts.findIndex((p) => p === "--depth");
+				const depthFlag = parts.indexOf("--depth");
 				let depth = "standard";
 				let question = args;
 
