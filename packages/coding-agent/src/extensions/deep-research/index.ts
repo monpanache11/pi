@@ -9,12 +9,12 @@
  * 5. Fact-checker - verifies key claims (headless agent)
  */
 
-import type { ExtensionFactory } from "../../core/extensions/types.ts";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { homedir } from "node:os";
 import { spawn } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ExtensionFactory } from "../../core/extensions/types.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, "..");
@@ -106,7 +106,7 @@ async function runHeadlessAgent(
 	modelId: string,
 	provider: string,
 	apiKey: string,
-	tempDir: string
+	tempDir: string,
 ): Promise<ResearchResult> {
 	const taskFile = join(tempDir, `task-${task.id}.json`);
 	const outputFile = join(tempDir, `result-${task.id}.json`);
@@ -124,18 +124,26 @@ async function runHeadlessAgent(
 			PI_OFFLINE: "0",
 		};
 
-		const child = spawn("node", [
-			piEntryPoint,
-			"--headless",
-			"--agent", agentName,
-			"--task-file", taskFile,
-			"--output", outputFile,
-			"--max-turns", "20"
-		], {
-			env,
-			cwd: process.cwd(),
-			stdio: ["ignore", "pipe", "pipe"]
-		});
+		const child = spawn(
+			"node",
+			[
+				piEntryPoint,
+				"--headless",
+				"--agent",
+				agentName,
+				"--task-file",
+				taskFile,
+				"--output",
+				outputFile,
+				"--max-turns",
+				"20",
+			],
+			{
+				env,
+				cwd: process.cwd(),
+				stdio: ["ignore", "pipe", "pipe"],
+			},
+		);
 
 		let stderr = "";
 		child.stderr?.on("data", (data) => {
@@ -162,10 +170,13 @@ async function runHeadlessAgent(
 		});
 
 		// Timeout after 5 minutes
-		setTimeout(() => {
-			child.kill("SIGTERM");
-			reject(new Error("Headless agent timed out after 5 minutes"));
-		}, 5 * 60 * 1000);
+		setTimeout(
+			() => {
+				child.kill("SIGTERM");
+				reject(new Error("Headless agent timed out after 5 minutes"));
+			},
+			5 * 60 * 1000,
+		);
 	});
 }
 
@@ -196,15 +207,17 @@ Focus on:
 - Comparative aspects if applicable
 - Recent developments (2024)
 - Practical implications`,
-		budget: 3
+		budget: 3,
 	};
 }
 
 function createSynthesizerTask(plan: DeepResearchPlan, results: ResearchResult[]): SubQuestion {
-	const findingsSummary = results.map(r => {
-		const sq = plan.sub_questions.find(q => q.id === r.sub_question_id);
-		return `## ${r.sub_question_id}: ${sq?.question}\n\n${r.findings}`;
-	}).join("\n\n---\n\n");
+	const findingsSummary = results
+		.map((r) => {
+			const sq = plan.sub_questions.find((q) => q.id === r.sub_question_id);
+			return `## ${r.sub_question_id}: ${sq?.question}\n\n${r.findings}`;
+		})
+		.join("\n\n---\n\n");
 
 	return {
 		id: "synthesize",
@@ -227,7 +240,7 @@ Create a JSON report with:
 }
 
 Deduplicate citations by URL. Renumber citations sequentially.`,
-		budget: 2
+		budget: 2,
 	};
 }
 
@@ -246,7 +259,7 @@ Report:
 ${JSON.stringify(report, null, 2)}
 
 Output the improved report JSON, or "APPROVED" if solid.`,
-		budget: 2
+		budget: 2,
 	};
 }
 
@@ -266,7 +279,7 @@ For each key claim, check if it has adequate citation support. Flag claims that:
 - Have outdated information
 
 Output the corrected report JSON.`,
-		budget: 2
+		budget: 2,
 	};
 }
 
@@ -286,8 +299,8 @@ async function parsePlanResult(result: ResearchResult): Promise<DeepResearchPlan
 			sub_questions: [
 				{ id: "sq1", question: "Overview", description: "General landscape", budget: 5 },
 				{ id: "sq2", question: "Technical details", description: "Technical deep dive", budget: 5 },
-				{ id: "sq3", question: "Practical implications", description: "Real-world adoption", budget: 5 }
-			]
+				{ id: "sq3", question: "Practical implications", description: "Real-world adoption", budget: 5 },
+			],
 		};
 	}
 }
@@ -305,11 +318,11 @@ async function parseReportResult(result: ResearchResult): Promise<DeepResearchRe
 			main_question: "Research Topic",
 			executive_summary: result.findings.slice(0, 500),
 			detailed_findings: result.findings,
-			sources: result.citations.map(c => ({ ...c, sub_question_id: result.sub_question_id })),
-			gaps: result.gaps.map(g => ({ ...g, sub_question_id: result.sub_question_id })),
+			sources: result.citations.map((c) => ({ ...c, sub_question_id: result.sub_question_id })),
+			gaps: result.gaps.map((g) => ({ ...g, sub_question_id: result.sub_question_id })),
 			confidence: result.confidence,
 			confidence_reasoning: result.confidence_reasoning,
-			sub_question_results: []
+			sub_question_results: [],
 		};
 	}
 }
@@ -317,10 +330,11 @@ async function parseReportResult(result: ResearchResult): Promise<DeepResearchRe
 export function createDeepResearchExtension(): ExtensionFactory {
 	return (pi) => {
 		pi.registerCommand("deep-research", {
-			description: "Start a deep research investigation using parallel headless agents. Usage: /deep-research <question> [--depth standard|deep|comprehensive]",
+			description:
+				"Start a deep research investigation using parallel headless agents. Usage: /deep-research <question> [--depth standard|deep|comprehensive]",
 			handler: async (args: string, ctx: import("../../core/extensions/types.ts").ExtensionCommandContext) => {
 				const parts = args.trim().split(/\s+/);
-				const depthFlag = parts.findIndex(p => p === "--depth");
+				const depthFlag = parts.findIndex((p) => p === "--depth");
 				let depth = "standard";
 				let question = args;
 
@@ -345,7 +359,7 @@ export function createDeepResearchExtension(): ExtensionFactory {
 				const provider = model.provider;
 				// ollama doesn't need an API key
 				const needsApiKey = provider !== "ollama";
-				const apiKey = needsApiKey ? (process.env[`${provider.toUpperCase()}_API_KEY`] || "") : "ollama";
+				const apiKey = needsApiKey ? process.env[`${provider.toUpperCase()}_API_KEY`] || "" : "ollama";
 
 				if (needsApiKey && !apiKey) {
 					ctx.ui.notify(`Error: No API key for provider ${provider}`, "error");
@@ -365,14 +379,28 @@ export function createDeepResearchExtension(): ExtensionFactory {
 					console.error(JSON.stringify({ level: "info", event: "deep_research_phase", phase: "planning" }));
 					ctx.ui.notify("Phase 1/5: Planning research...", "info");
 					const planTask = createPlannerTask(question);
-					const planResult = await runHeadlessAgent("researcher_headless", planTask, modelId, provider, apiKey, tempDir);
+					const planResult = await runHeadlessAgent(
+						"researcher_headless",
+						planTask,
+						modelId,
+						provider,
+						apiKey,
+						tempDir,
+					);
 					const plan = await parsePlanResult(planResult);
 
 					// Phase 2: Parallel Research
-					console.error(JSON.stringify({ level: "info", event: "deep_research_phase", phase: "research", subQuestions: plan.sub_questions.length }));
+					console.error(
+						JSON.stringify({
+							level: "info",
+							event: "deep_research_phase",
+							phase: "research",
+							subQuestions: plan.sub_questions.length,
+						}),
+					);
 					ctx.ui.notify(`Phase 2/5: Launching ${plan.sub_questions.length} parallel researchers...`, "info");
-					const researchPromises = plan.sub_questions.map(sq =>
-						runHeadlessAgent("researcher_headless", sq, modelId, provider, apiKey, tempDir)
+					const researchPromises = plan.sub_questions.map((sq) =>
+						runHeadlessAgent("researcher_headless", sq, modelId, provider, apiKey, tempDir),
 					);
 					const results = await Promise.all(researchPromises);
 
@@ -380,14 +408,28 @@ export function createDeepResearchExtension(): ExtensionFactory {
 					console.error(JSON.stringify({ level: "info", event: "deep_research_phase", phase: "synthesis" }));
 					ctx.ui.notify("Phase 3/5: Synthesizing findings...", "info");
 					const synthesizeTask = createSynthesizerTask(plan, results);
-					const synthesizeResult = await runHeadlessAgent("researcher_headless", synthesizeTask, modelId, provider, apiKey, tempDir);
+					const synthesizeResult = await runHeadlessAgent(
+						"researcher_headless",
+						synthesizeTask,
+						modelId,
+						provider,
+						apiKey,
+						tempDir,
+					);
 					let report = await parseReportResult(synthesizeResult);
 
 					// Phase 4: Critique (using headless agent)
 					console.error(JSON.stringify({ level: "info", event: "deep_research_phase", phase: "critique" }));
 					ctx.ui.notify("Phase 4/5: Critiquing report...", "info");
 					const criticTask = createCriticTask(report);
-					const criticResult = await runHeadlessAgent("researcher_headless", criticTask, modelId, provider, apiKey, tempDir);
+					const criticResult = await runHeadlessAgent(
+						"researcher_headless",
+						criticTask,
+						modelId,
+						provider,
+						apiKey,
+						tempDir,
+					);
 					if (criticResult.findings !== "APPROVED") {
 						report = await parseReportResult(criticResult);
 					}
@@ -396,7 +438,14 @@ export function createDeepResearchExtension(): ExtensionFactory {
 					console.error(JSON.stringify({ level: "info", event: "deep_research_phase", phase: "fact_check" }));
 					ctx.ui.notify("Phase 5/5: Fact-checking...", "info");
 					const factCheckTask = createFactCheckerTask(report);
-					const factCheckResult = await runHeadlessAgent("researcher_headless", factCheckTask, modelId, provider, apiKey, tempDir);
+					const factCheckResult = await runHeadlessAgent(
+						"researcher_headless",
+						factCheckTask,
+						modelId,
+						provider,
+						apiKey,
+						tempDir,
+					);
 					report = await parseReportResult(factCheckResult);
 
 					console.error(JSON.stringify({ level: "info", event: "deep_research_complete", question }));
@@ -412,8 +461,8 @@ export function createDeepResearchExtension(): ExtensionFactory {
 							sub_questions_count: plan.sub_questions.length,
 							total_citations: report.sources.length,
 							total_gaps: report.gaps.length,
-							timestamp: Date.now()
-						}
+							timestamp: Date.now(),
+						},
 					};
 
 					// Write final report to file
@@ -422,13 +471,12 @@ export function createDeepResearchExtension(): ExtensionFactory {
 
 					ctx.ui.notify(`Deep research complete! Report saved to ${finalReportPath}`, "info");
 					ctx.ui.notify(`Summary: ${report.executive_summary.slice(0, 200)}...`, "info");
-
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					console.error(JSON.stringify({ level: "error", event: "deep_research_error", error: message }));
 					ctx.ui.notify(`Deep research failed: ${message}`, "error");
 				}
-			}
+			},
 		});
 	};
 }

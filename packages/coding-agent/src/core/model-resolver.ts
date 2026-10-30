@@ -551,13 +551,13 @@ export interface ModelConfig {
 export class ModelResolver {
 	/**
 	 * Resolves model config with strict priority.
-	 * 
+	 *
 	 * For orchestrator/root process:
-	 *   1. CLI flags (--model, --provider) 
+	 *   1. CLI flags (--model, --provider)
 	 *   2. Environment variables (PI_MODEL, PI_PROVIDER)
 	 *   3. User config (~/.pi/config.json → defaultModel/defaultProvider)
 	 *   4. Hardcoded defaults
-	 * 
+	 *
 	 * For subagents (headless mode):
 	 *   CLI flags are REJECTED (validation in headless entry point)
 	 *   1. Environment variables (PI_MODEL, PI_PROVIDER) - REQUIRED
@@ -571,13 +571,9 @@ export class ModelResolver {
 		// 3. User config (~/.pi/config.json → defaultModel/defaultProvider) — fallback only
 		// 4. Hardcoded defaults — last resort
 
-		const modelId = cliOverrides.modelId
-			?? process.env.PI_MODEL
-			?? "gpt-4o";
+		const modelId = cliOverrides.modelId ?? process.env.PI_MODEL ?? "gpt-4o";
 
-		const provider = cliOverrides.provider
-			?? process.env.PI_PROVIDER
-			?? this.inferProvider(modelId);
+		const provider = cliOverrides.provider ?? process.env.PI_PROVIDER ?? ModelResolver.inferProvider(modelId);
 
 		return { modelId, provider };
 	}

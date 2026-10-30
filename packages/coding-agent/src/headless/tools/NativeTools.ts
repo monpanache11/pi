@@ -57,13 +57,9 @@ export function getNativeToolsForProvider(provider: string): NativeTool[] {
 				{ schema: anthropicWebSearchSchema, executor: new AnthropicWebSearchExecutor(), provider: "anthropic" },
 			];
 		case "google":
-			return [
-				{ schema: googleSearchSchema, executor: new GoogleSearchExecutor(), provider: "google" },
-			];
+			return [{ schema: googleSearchSchema, executor: new GoogleSearchExecutor(), provider: "google" }];
 		case "xai":
-			return [
-				{ schema: xaiWebSearchSchema, executor: new XAIWebSearchExecutor(), provider: "xai" },
-			];
+			return [{ schema: xaiWebSearchSchema, executor: new XAIWebSearchExecutor(), provider: "xai" }];
 		default:
 			return [];
 	}
@@ -73,7 +69,7 @@ export function getNativeToolsForProvider(provider: string): NativeTool[] {
  * Get native tool schemas for a provider (for registration in tool registry)
  */
 export function getNativeToolSchemasForProvider(provider: string): ToolSchema[] {
-	return getNativeToolsForProvider(provider).map(t => t.schema);
+	return getNativeToolsForProvider(provider).map((t) => t.schema);
 }
 
 /**
@@ -83,10 +79,10 @@ export async function executeNativeTool(
 	provider: string,
 	toolName: string,
 	args: Record<string, unknown>,
-	context: NativeToolContext
+	context: NativeToolContext,
 ): Promise<NativeToolResult | null> {
 	const tools = getNativeToolsForProvider(provider);
-	const tool = tools.find(t => t.schema.function.name === toolName);
+	const tool = tools.find((t) => t.schema.function.name === toolName);
 	if (!tool) return null;
 
 	return tool.executor.execute(args, context);
@@ -100,7 +96,8 @@ export const webSearchPreviewSchema: ToolSchema = {
 	type: "function",
 	function: {
 		name: "web_search_preview",
-		description: "Search the web for real-time information. Use for fact-finding, current events, documentation, and research.",
+		description:
+			"Search the web for real-time information. Use for fact-finding, current events, documentation, and research.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -122,7 +119,8 @@ export const codeInterpreterSchema: ToolSchema = {
 	type: "function",
 	function: {
 		name: "code_interpreter",
-		description: "Execute Python code in a sandboxed environment. Use for calculations, data analysis, visualization, and code execution.",
+		description:
+			"Execute Python code in a sandboxed environment. Use for calculations, data analysis, visualization, and code execution.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -135,8 +133,11 @@ export const codeInterpreterSchema: ToolSchema = {
 };
 
 class OpenAIWebSearchExecutor implements NativeToolExecutor {
-	async execute(args: { query: string; search_context_size?: "low" | "medium" | "high" }, context: NativeToolContext): Promise<NativeToolResult> {
-		// @ts-ignore - dynamic import, types not available at compile time
+	async execute(
+		args: { query: string; search_context_size?: "low" | "medium" | "high" },
+		context: NativeToolContext,
+	): Promise<NativeToolResult> {
+		// @ts-expect-error - dynamic import, types not available at compile time
 		const { OpenAI } = await import("openai");
 
 		const client = new OpenAI({
@@ -145,18 +146,29 @@ class OpenAIWebSearchExecutor implements NativeToolExecutor {
 		});
 
 		try {
-			const response = await client.responses.create({
-				model: context.modelId,
-				input: args.query,
-				tools: [{ type: "web_search_preview", search_context_size: args.search_context_size || "medium" }],
-			}, { signal: context.signal });
+			const response = await client.responses.create(
+				{
+					model: context.modelId,
+					input: args.query,
+					tools: [{ type: "web_search_preview", search_context_size: args.search_context_size || "medium" }],
+				},
+				{ signal: context.signal },
+			);
 
 			// Extract citations from annotations
 			const citations = response.output
-				.flatMap((output: any) => output.type === "message" ? output.content : [])
-				.flatMap((content: any) => content.type === "output_text" ? content.annotations || [] : [])
-				.filter((annotation: any): annotation is { type: "url_citation"; title: string; url: string; start_index: number; end_index: number } =>
-					annotation.type === "url_citation"
+				.flatMap((output: any) => (output.type === "message" ? output.content : []))
+				.flatMap((content: any) => (content.type === "output_text" ? content.annotations || [] : []))
+				.filter(
+					(
+						annotation: any,
+					): annotation is {
+						type: "url_citation";
+						title: string;
+						url: string;
+						start_index: number;
+						end_index: number;
+					} => annotation.type === "url_citation",
 				)
 				.map((annotation: any) => ({
 					title: annotation.title,
@@ -191,7 +203,7 @@ class OpenAIWebSearchExecutor implements NativeToolExecutor {
 
 class OpenAICodeInterpreterExecutor implements NativeToolExecutor {
 	async execute(args: { code: string }, context: NativeToolContext): Promise<NativeToolResult> {
-		// @ts-ignore - dynamic import
+		// @ts-expect-error - dynamic import
 		const { OpenAI } = await import("openai");
 
 		const client = new OpenAI({
@@ -200,11 +212,14 @@ class OpenAICodeInterpreterExecutor implements NativeToolExecutor {
 		});
 
 		try {
-			const response = await client.responses.create({
-				model: context.modelId,
-				input: args.code,
-				tools: [{ type: "code_interpreter", container: { type: "auto" } }],
-			}, { signal: context.signal });
+			const response = await client.responses.create(
+				{
+					model: context.modelId,
+					input: args.code,
+					tools: [{ type: "code_interpreter", container: { type: "auto" } }],
+				},
+				{ signal: context.signal },
+			);
 
 			const outputText = response.output_text || "";
 			return {
@@ -246,7 +261,7 @@ export const anthropicWebSearchSchema: ToolSchema = {
 
 class AnthropicWebSearchExecutor implements NativeToolExecutor {
 	async execute(args: { query: string }, context: NativeToolContext): Promise<NativeToolResult> {
-		// @ts-ignore - dynamic import
+		// @ts-expect-error - dynamic import
 		const { Anthropic } = await import("@anthropic-ai/sdk");
 
 		const client = new Anthropic({
@@ -255,12 +270,15 @@ class AnthropicWebSearchExecutor implements NativeToolExecutor {
 		});
 
 		try {
-			const response: any = await client.messages.create({
-				model: context.modelId,
-				max_tokens: 4096,
-				messages: [{ role: "user", content: args.query }],
-				tools: [{ type: "web_search_20240305", name: "web_search" }] as any,
-			}, { signal: context.signal });
+			const response: any = await client.messages.create(
+				{
+					model: context.modelId,
+					max_tokens: 4096,
+					messages: [{ role: "user", content: args.query }],
+					tools: [{ type: "web_search_20240305", name: "web_search" }] as any,
+				},
+				{ signal: context.signal },
+			);
 
 			const toolUse = response.content.find((c: any) => c.type === "tool_use");
 			const resultText = toolUse?.input?.result || "";
@@ -330,17 +348,20 @@ export const googleSearchSchema: ToolSchema = {
 
 class GoogleSearchExecutor implements NativeToolExecutor {
 	async execute(args: { query: string }, context: NativeToolContext): Promise<NativeToolResult> {
-		// @ts-ignore - dynamic import
+		// @ts-expect-error - dynamic import
 		const { GoogleGenerativeAI } = await import("@google/generative-ai");
 
 		const genAI = new GoogleGenerativeAI(context.apiKey);
 		const model = genAI.getGenerativeModel({ model: context.modelId });
 
 		try {
-			const result: any = await model.generateContent({
-				contents: [{ role: "user", parts: [{ text: args.query }] }],
-				tools: [{ googleSearch: {} }] as any,
-			}, { signal: context.signal });
+			const result: any = await model.generateContent(
+				{
+					contents: [{ role: "user", parts: [{ text: args.query }] }],
+					tools: [{ googleSearch: {} }] as any,
+				},
+				{ signal: context.signal },
+			);
 
 			const response = result.response;
 			const text = response.text();
@@ -413,7 +434,7 @@ export const xaiWebSearchSchema: ToolSchema = {
 class XAIWebSearchExecutor implements NativeToolExecutor {
 	async execute(args: { query: string }, context: NativeToolContext): Promise<NativeToolResult> {
 		// xAI uses OpenAI-compatible API
-		// @ts-ignore - dynamic import
+		// @ts-expect-error - dynamic import
 		const { OpenAI } = await import("openai");
 
 		const client = new OpenAI({
@@ -424,11 +445,23 @@ class XAIWebSearchExecutor implements NativeToolExecutor {
 		try {
 			// xAI's web search is similar to OpenAI's but may have different tool format
 			// For now, we'll use a generic approach
-			const response = await client.chat.completions.create({
-				model: context.modelId,
-				messages: [{ role: "user", content: args.query }],
-				tools: [{ type: "function", function: { name: "web_search", description: "Search the web", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } }],
-			}, { signal: context.signal });
+			const response = await client.chat.completions.create(
+				{
+					model: context.modelId,
+					messages: [{ role: "user", content: args.query }],
+					tools: [
+						{
+							type: "function",
+							function: {
+								name: "web_search",
+								description: "Search the web",
+								parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+							},
+						},
+					],
+				},
+				{ signal: context.signal },
+			);
 
 			const toolCall = response.choices[0]?.message?.tool_calls?.[0];
 			const resultText = toolCall?.function?.arguments || "";

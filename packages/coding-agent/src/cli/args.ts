@@ -56,7 +56,7 @@ export interface Args {
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
 	unknownFlags: Map<string, boolean | string>;
 	diagnostics: Array<{ type: "warning" | "error"; message: string }>;
-	
+
 	// Headless mode
 	headless?: boolean;
 	agent?: string;

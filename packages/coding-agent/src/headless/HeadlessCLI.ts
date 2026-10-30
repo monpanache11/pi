@@ -10,21 +10,21 @@
  */
 
 import { readFile, writeFile } from "node:fs/promises";
+import type { Api, Model } from "@earendil-works/pi-ai";
 import chalk from "chalk";
 import type { Args } from "../cli/args.ts";
 import { getAgentDir } from "../config.ts";
 import { AgentLoader } from "../core/agent-loader.ts";
-import { ModelResolver } from "../core/model-resolver.ts";
+import { createAgentSessionFromServices, createAgentSessionServices } from "../core/agent-session-services.ts";
 import type { ToolDefinition } from "../core/extensions/types.ts";
-import { createWriteOutputTool } from "./tools/WriteOutputTool.ts";
-import { getNativeToolsForProvider } from "./tools/NativeTools.ts";
-import type { NativeTool } from "./tools/NativeTools.ts";
-import { createAgentSessionServices, createAgentSessionFromServices } from "../core/agent-session-services.ts";
-import { SettingsManager } from "../core/settings-manager.ts";
-import { SessionManager } from "../core/session-manager.ts";
+import { ModelResolver } from "../core/model-resolver.ts";
 import { ModelRuntime } from "../core/model-runtime.ts";
-import type { Model, Api } from "@earendil-works/pi-ai";
+import { SessionManager } from "../core/session-manager.ts";
+import { SettingsManager } from "../core/settings-manager.ts";
 import { builtInExtensions } from "../extensions/index.ts";
+import type { NativeTool } from "./tools/NativeTools.ts";
+import { getNativeToolsForProvider } from "./tools/NativeTools.ts";
+import { createWriteOutputTool } from "./tools/WriteOutputTool.ts";
 
 export interface HeadlessConfig {
 	agent: string;
@@ -87,7 +87,11 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 	// In headless mode, we DO NOT accept --model or --provider flags.
 	// Model is inherited ONLY from PI_MODEL / PI_PROVIDER env vars.
 	if (parsed.model || parsed.provider) {
-		console.error(chalk.red("Error: --model and --provider are not allowed in headless mode. Model is inherited from PI_MODEL/PI_PROVIDER env vars."));
+		console.error(
+			chalk.red(
+				"Error: --model and --provider are not allowed in headless mode. Model is inherited from PI_MODEL/PI_PROVIDER env vars.",
+			),
+		);
 		return 3;
 	}
 
@@ -95,17 +99,19 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 	const modelConfig = ModelResolver.resolve({});
 	const provider = modelConfig.provider;
 
-	console.error(JSON.stringify({
-		level: "info",
-		event: "headless_start",
-		agent,
-		model: modelConfig.modelId,
-		provider,
-		taskFile,
-		output,
-		maxTurns,
-		timestamp: Date.now()
-	}));
+	console.error(
+		JSON.stringify({
+			level: "info",
+			event: "headless_start",
+			agent,
+			model: modelConfig.modelId,
+			provider,
+			taskFile,
+			output,
+			maxTurns,
+			timestamp: Date.now(),
+		}),
+	);
 
 	try {
 		// Load task
@@ -146,14 +152,18 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 				// Create fallback model by cloning an existing model with custom ID
 				const baseModel = providerModels[0];
 				model = { ...baseModel, id: modelConfig.modelId, name: modelConfig.modelId } as Model<Api>;
-				console.error(JSON.stringify({
-					level: "warn",
-					event: "headless_model_fallback",
-					message: `Model ${modelConfig.modelId} not in catalog, using fallback based on ${baseModel.id}`,
-					timestamp: Date.now()
-				}));
+				console.error(
+					JSON.stringify({
+						level: "warn",
+						event: "headless_model_fallback",
+						message: `Model ${modelConfig.modelId} not in catalog, using fallback based on ${baseModel.id}`,
+						timestamp: Date.now(),
+					}),
+				);
 			} else {
-				throw new Error(`Model ${modelConfig.modelId} not found for provider ${provider} and no base models available`);
+				throw new Error(
+					`Model ${modelConfig.modelId} not found for provider ${provider} and no base models available`,
+				);
 			}
 		}
 
@@ -182,7 +192,7 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 		const resourceLoader = services.resourceLoader;
 
 		// Build native tool definitions
-		const nativeToolDefs: ToolDefinition[] = nativeTools.map(tool => ({
+		const nativeToolDefs: ToolDefinition[] = nativeTools.map((tool) => ({
 			name: tool.schema.function.name,
 			label: tool.schema.function.name,
 			description: tool.schema.function.description,
@@ -192,7 +202,7 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 				args: Record<string, unknown>,
 				_signal: AbortSignal | undefined,
 				_onUpdate: any,
-				_ctx: any
+				_ctx: any,
 			) => {
 				const abortSignal = _signal ?? new AbortController().signal;
 				const result = await tool.executor.execute(args, {
@@ -215,7 +225,7 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 		const customTools: ToolDefinition[] = [...nativeToolDefs, writeOutputTool];
 
 		// Build tools allowlist: write_output + native tool names
-		const toolNames = ["write_output", ...nativeTools.map(t => t.schema.function.name)];
+		const toolNames = ["write_output", ...nativeTools.map((t) => t.schema.function.name)];
 
 		// Create the agent session
 		const { session } = await createAgentSessionFromServices({
@@ -239,13 +249,15 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 				reload: async () => {},
 			},
 			onError: (err) => {
-				console.error(JSON.stringify({
-					level: "error",
-					event: "extension_error",
-					extensionPath: err.extensionPath,
-					error: err.error,
-					timestamp: Date.now()
-				}));
+				console.error(
+					JSON.stringify({
+						level: "error",
+						event: "extension_error",
+						extensionPath: err.extensionPath,
+						error: err.error,
+						timestamp: Date.now(),
+					}),
+				);
 			},
 		});
 
@@ -259,26 +271,30 @@ export async function runHeadlessMode(parsed: Args): Promise<number> {
 		// If not written, the agent may have finished without calling the tool
 		// This is OK - the agent is expected to call write_output
 
-		console.error(JSON.stringify({
-			level: "info",
-			event: "headless_complete",
-			agent: agentDef.name,
-			model: modelConfig.modelId,
-			provider,
-			nativeTools: nativeTools.map(t => t.schema.function.name),
-			task: task.question,
-			timestamp: Date.now()
-		}));
+		console.error(
+			JSON.stringify({
+				level: "info",
+				event: "headless_complete",
+				agent: agentDef.name,
+				model: modelConfig.modelId,
+				provider,
+				nativeTools: nativeTools.map((t) => t.schema.function.name),
+				task: task.question,
+				timestamp: Date.now(),
+			}),
+		);
 
 		return 0;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		console.error(JSON.stringify({
-			level: "error",
-			event: "headless_error",
-			error: message,
-			timestamp: Date.now()
-		}));
+		console.error(
+			JSON.stringify({
+				level: "error",
+				event: "headless_error",
+				error: message,
+				timestamp: Date.now(),
+			}),
+		);
 		return 1;
 	}
 }

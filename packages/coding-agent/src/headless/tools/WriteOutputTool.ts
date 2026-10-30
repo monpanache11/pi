@@ -3,8 +3,8 @@
  */
 
 import { writeFile } from "node:fs/promises";
-import type { ToolDefinition } from "../../core/extensions/types.ts";
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
+import type { ToolDefinition } from "../../core/extensions/types.ts";
 
 interface TextContent {
 	type: "text";
@@ -83,7 +83,7 @@ export function createWriteOutputTool(outputFile: string, taskIdParam: string): 
 			args: WriteOutputArgs,
 			_signal: AbortSignal | undefined,
 			_onUpdate: ((result: AgentToolResult) => void) | undefined,
-			_ctx: any
+			_ctx: any,
 		): Promise<AgentToolResult> => {
 			const output = {
 				sub_question_id: taskId,
