@@ -22,6 +22,18 @@ Use Pi [interactively](packages/coding-agent/docs/usage.md), automate it in [pri
 
 ## Getting started
 
+### Install from this fork (includes headless mode & Deep Research)
+
+```bash
+# pnpm (recommended)
+pnpm add github:monpanache11/pi#main
+
+# npm
+npm install github:monpanache11/pi#main
+```
+
+### Official release
+
 Install the command-line interface:
 
 ```bash
