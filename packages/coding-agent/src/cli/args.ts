@@ -56,6 +56,13 @@ export interface Args {
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
 	unknownFlags: Map<string, boolean | string>;
 	diagnostics: Array<{ type: "warning" | "error"; message: string }>;
+	
+	// Headless mode
+	headless?: boolean;
+	agent?: string;
+	taskFile?: string;
+	output?: string;
+	maxTurns?: number;
 }
 
 const VALID_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
@@ -244,6 +251,21 @@ export function parseArgs(args: string[]): Args {
 			result.projectTrustOverride = false;
 		} else if (arg === "--offline") {
 			result.offline = true;
+		} else if (arg === "--headless") {
+			result.headless = true;
+		} else if (arg === "--agent" && i + 1 < args.length) {
+			result.agent = args[++i];
+		} else if (arg === "--task-file" && i + 1 < args.length) {
+			result.taskFile = args[++i];
+		} else if (arg === "--output" && i + 1 < args.length) {
+			result.output = args[++i];
+		} else if (arg === "--max-turns" && i + 1 < args.length) {
+			const maxTurns = parseInt(args[++i], 10);
+			if (isNaN(maxTurns) || maxTurns < 1) {
+				result.diagnostics.push({ type: "error", message: "--max-turns requires a positive integer" });
+			} else {
+				result.maxTurns = maxTurns;
+			}
 		} else if (arg.startsWith("@")) {
 			result.fileArgs.push(arg.slice(1)); // Remove @ prefix
 		} else if (arg.startsWith("--")) {
@@ -341,6 +363,11 @@ ${chalk.bold("Options:")}
   --approve, -a                  Trust project-local files for this run
   --no-approve, -na              Ignore project-local files for this run
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
+  --headless                     Run in headless mode (no TUI, for subprocess use)
+  --agent <name>                 Agent to run in headless mode (from ~/.pi/agent/agents/)
+  --task-file <path>             JSON task file for headless agent
+  --output <path>                Output file for headless agent result
+  --max-turns <n>                Maximum turns for headless agent (default: 15)
   --                             End option parsing; treat remaining arguments as messages/files
   --help, -h                     Show this help
   --version, -v                  Show version number

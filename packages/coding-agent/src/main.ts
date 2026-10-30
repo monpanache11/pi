@@ -64,7 +64,7 @@ import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/tru
 import { builtInExtensions } from "./extensions/index.ts";
 import { loadMcpCommand } from "./extensions/mcp/cli.lazy.ts";
 import { runMigrations, showDeprecationWarnings } from "./migrations.ts";
-import { InteractiveMode, runPrintMode, runRpcMode } from "./modes/index.ts";
+import { InteractiveMode, runPrintMode, runRpcMode, runHeadlessMode } from "./modes/index.ts";
 import { initTheme, setThemeJsonValidator, stopThemeWatcher } from "./modes/interactive/theme/theme.ts";
 import { validateThemeJson } from "./modes/interactive/theme/theme-schema.ts";
 import { cleanupManagedInstall, handleConfigCommand, handlePackageCommand } from "./package-manager-cli.ts";
@@ -110,6 +110,9 @@ function isTruthyEnvFlag(value: string | undefined): boolean {
 }
 
 function resolveAppMode(parsed: Args, stdinIsTTY: boolean, stdoutIsTTY: boolean): AppMode {
+	if (parsed.headless) {
+		return "headless";
+	}
 	if (parsed.mode === "rpc") {
 		return "rpc";
 	}
@@ -959,6 +962,15 @@ export async function main(args: string[], options?: MainOptions) {
 	if (appMode === "rpc") {
 		printTimings();
 		await runRpcMode(runtime);
+	} else if (appMode === "headless") {
+		printTimings();
+		const exitCode = await runHeadlessMode(parsed);
+		stopThemeWatcher();
+		restoreStdout();
+		if (exitCode !== 0) {
+			process.exitCode = exitCode;
+		}
+		return;
 	} else if (appMode === "interactive") {
 		const interactiveMode = new InteractiveMode(runtime, {
 			migratedProviders,

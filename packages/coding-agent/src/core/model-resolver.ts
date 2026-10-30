@@ -533,6 +533,64 @@ export function resolveCliModel(options: {
 	};
 }
 
+/**
+ * Resolve model config for headless/subprocess mode.
+ *
+ * In headless mode, model is inherited ONLY from environment variables:
+ * - PI_MODEL: model ID (e.g., "gpt-4o")
+ * - PI_PROVIDER: provider name (e.g., "openai")
+ *
+ * This enforces the single model selection principle - the orchestrator
+ * chooses the model once and all subagents inherit it via env vars.
+ */
+export interface ModelConfig {
+	modelId: string;
+	provider: string;
+}
+
+export class ModelResolver {
+	/**
+	 * Resolves model config with strict priority.
+	 * 
+	 * For orchestrator/root process:
+	 *   1. CLI flags (--model, --provider) 
+	 *   2. Environment variables (PI_MODEL, PI_PROVIDER)
+	 *   3. User config (~/.pi/config.json → defaultModel/defaultProvider)
+	 *   4. Hardcoded defaults
+	 * 
+	 * For subagents (headless mode):
+	 *   CLI flags are REJECTED (validation in headless entry point)
+	 *   1. Environment variables (PI_MODEL, PI_PROVIDER) - REQUIRED
+	 *   2. User config - fallback only
+	 *   3. Hardcoded defaults - last resort
+	 */
+	static resolve(cliOverrides: Partial<ModelConfig> = {}): ModelConfig {
+		// Priority chain (highest wins):
+		// 1. CLI flags (--model, --provider) — ONLY for orchestrator/root process
+		// 2. Environment variables (PI_MODEL, PI_PROVIDER) — propagated to ALL subagents
+		// 3. User config (~/.pi/config.json → defaultModel/defaultProvider) — fallback only
+		// 4. Hardcoded defaults — last resort
+
+		const modelId = cliOverrides.modelId
+			?? process.env.PI_MODEL
+			?? "gpt-4o";
+
+		const provider = cliOverrides.provider
+			?? process.env.PI_PROVIDER
+			?? this.inferProvider(modelId);
+
+		return { modelId, provider };
+	}
+
+	private static inferProvider(modelId: string): string {
+		if (modelId.startsWith("gpt-") || modelId.startsWith("o1")) return "openai";
+		if (modelId.startsWith("claude-")) return "anthropic";
+		if (modelId.startsWith("gemini-")) return "google";
+		if (modelId.startsWith("grok-")) return "xai";
+		return "openai"; // default fallback
+	}
+}
+
 export interface InitialModelResult {
 	model: Model<Api> | undefined;
 	thinkingLevel: ThinkingLevel;
